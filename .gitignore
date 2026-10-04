@@ -2,3 +2,4 @@ shots/
 .vercel
 .env*.local
 .env*
+.chaotic

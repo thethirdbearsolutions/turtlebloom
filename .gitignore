@@ -1,3 +1,4 @@
 shots/
 .vercel
 .env*.local
+.env*

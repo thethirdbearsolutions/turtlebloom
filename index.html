@@ -1,0 +1,1022 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turtle Bloom</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Cellipse cx=%2716%27 cy=%2718%27 rx=%2711%27 ry=%279%27 fill=%27%234caf50%27 stroke=%27%231b1724%27 stroke-width=%272%27/%3E%3Ccircle cx=%2716%27 cy=%277%27 r=%274%27 fill=%27%238fd16a%27 stroke=%27%231b1724%27 stroke-width=%272%27/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&family=Pixelify+Sans:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root { --ink: #1b1724; --paper: #fffdf6; --shade: #ece6d6; --accent: #e8553d; --stray: #7a6aa8; --ok: #2f8a4a; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body { background: linear-gradient(180deg, #74c4f2 0%, #b9e4ff 46%, #fff0cc 100%); color: var(--ink); font: 14px/1.4 'IBM Plex Sans', system-ui, sans-serif; }
+  #c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+
+  .win { position: fixed; background: var(--paper); border: 1.5px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); display: flex; flex-direction: column; }
+  .bar { flex: none; height: 22px; border-bottom: 1.5px solid var(--ink); position: relative; display: flex; align-items: center; justify-content: center;
+         background: repeating-linear-gradient(180deg, transparent 0 2px, var(--ink) 2px 3px) 0 4px / 100% 12px no-repeat var(--paper); margin: 0; }
+  .bar span { background: var(--paper); padding: 0 8px; font: 600 12.5px/1 'IBM Plex Mono', monospace; letter-spacing: .02em; }
+  .bar i { position: absolute; left: 8px; top: 4px; width: 12px; height: 12px; border: 1.5px solid var(--ink); background: var(--paper); }
+  .body { padding: 10px 12px; min-height: 0; }
+
+  button { font: 600 13px/1 'IBM Plex Sans', sans-serif; color: var(--ink); background: var(--paper); border: 1.5px solid var(--ink); border-radius: 7px; padding: 7px 12px; cursor: pointer; }
+  button:hover { background: var(--shade); }
+  button:active, button.on { background: var(--ink); color: var(--paper); }
+  button.default { box-shadow: 0 0 0 2px var(--paper), 0 0 0 3.5px var(--ink); }
+  button:disabled { opacity: .45; cursor: default; }
+
+  #title { top: 14px; left: 14px; width: 330px; }
+  #title h1 { margin: 0; font: 700 26px/1 'Pixelify Sans', monospace; letter-spacing: .01em; }
+  #title h1 em { font-style: normal; color: var(--accent); }
+  #levelname { margin: 6px 0 10px; font-weight: 600; }
+  #levels { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+  #levels button { padding: 5px 0 3px; border-radius: 5px; display: flex; flex-direction: column; align-items: center; gap: 2px; font: 600 13px 'IBM Plex Mono', monospace; }
+  #levels button small { font-size: 9px; letter-spacing: -1px; color: var(--accent); height: 10px; }
+  #levels button.on small { color: #ffb4a4; }
+  #note { margin: 10px 0 0; padding-top: 8px; border-top: 1px dashed var(--ink); font-size: 13px; }
+  #note code, .help code { font: 600 12.5px 'IBM Plex Mono', monospace; background: var(--shade); padding: 0 4px; border-radius: 3px; }
+
+  #goals { left: 14px; bottom: 14px; width: 330px; }
+  #goals ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  #goals li { display: flex; gap: 8px; align-items: center; }
+  #goals li b { font: 600 13px 'IBM Plex Mono', monospace; margin-left: auto; }
+  #goals li .chk { width: 14px; height: 14px; border: 1.5px solid var(--ink); display: inline-grid; place-items: center; font-size: 11px; line-height: 1; }
+  #goals li.done .chk { background: var(--ink); color: var(--paper); }
+  #goals li.bad { color: var(--stray); }
+  #goals li.bad .chk { border-color: var(--stray); background: var(--stray); color: var(--paper); }
+  #status { margin-top: 8px; min-height: 18px; font-weight: 600; }
+  #status.err { color: #b4321d; }
+
+  #panel { top: 14px; right: 14px; bottom: 14px; width: 350px; }
+  #panel .body { display: flex; flex-direction: column; gap: 8px; flex: 1; }
+  #palette { display: flex; flex-wrap: wrap; gap: 5px; }
+  #palette button { font: 600 12px 'IBM Plex Mono', monospace; padding: 5px 7px; border-radius: 5px; }
+  #code { flex: 0 0 auto; height: 170px; resize: none; width: 100%; font: 15px/1.5 'IBM Plex Mono', monospace; color: var(--ink); background: #fff; border: 1.5px solid var(--ink); padding: 8px 10px; outline: none; border-radius: 0; }
+  #code:focus { box-shadow: inset 0 0 0 1px var(--ink); }
+  #meta { display: flex; justify-content: space-between; font: 12px 'IBM Plex Mono', monospace; }
+  #controls { display: flex; gap: 6px; align-items: center; }
+  #controls label { margin-left: auto; font-size: 12px; display: flex; gap: 6px; align-items: center; }
+  #controls input { width: 70px; accent-color: var(--ink); }
+  #queuewin { flex: 1; min-height: 80px; display: flex; flex-direction: column; border: 1.5px solid var(--ink); }
+  #queuewin .bar { height: 20px; }
+  #queue { flex: 1; overflow: auto; margin: 0; padding: 6px 10px 6px 42px; font: 13px/1.55 'IBM Plex Mono', monospace; background: #fff; }
+  #queue li::marker { color: #9a93a6; }
+  #queue li.done { color: #9a93a6; }
+  #queue li.now { background: var(--ink); color: var(--paper); margin-left: -6px; padding-left: 6px; }
+  #queue:empty::before { content: 'Press Run and the turtle lines up its steps here.'; color: #9a93a6; margin-left: -32px; display: block; font-family: 'IBM Plex Sans', sans-serif; }
+
+  #dialog { left: 50%; top: 18px; transform: translateX(-50%); width: 330px; display: none; z-index: 5; }
+  #dialog.show { display: flex; }
+  #dialog .body { display: grid; grid-template-columns: 54px 1fr; gap: 12px; padding: 16px; }
+  #dialog .stars { font-size: 26px; letter-spacing: 3px; color: var(--accent); line-height: 1; margin: 4px 0 6px; }
+  #dialog .stars span { color: #d8d0c0; }
+  #dialog p { margin: 0 0 4px; }
+  #dialog .btns { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
+  #help { left: 50%; top: 50%; transform: translate(-50%, -50%); width: 380px; display: none; z-index: 6; }
+  #help.show { display: flex; }
+  .help table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  .help td { padding: 3px 4px; border-bottom: 1px dotted #c9c1b0; vertical-align: top; }
+  .help td:first-child { white-space: nowrap; }
+  .help p { margin: 8px 0 0; font-size: 13px; }
+
+  @media (max-width: 860px) {
+    #title { width: auto; right: 14px; top: 8px; left: 8px; }
+    #title h1 { font-size: 20px; }
+    #note { display: none; }
+    #levels { grid-template-columns: repeat(12, 1fr); gap: 3px; }
+    #levels button small { display: none; }
+    #goals { left: 8px; right: 8px; width: auto; bottom: calc(46vh + 16px); }
+    #goals .bar, #goallist { display: none; }
+    #goals .body { padding: 6px 10px; }
+    #status { margin: 0; }
+    #goals:has(#status:empty) { display: none; }
+    #panel { top: auto; left: 8px; right: 8px; bottom: 8px; width: auto; height: 46vh; }
+    #code { height: 90px; }
+  }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<section class="win" id="title">
+  <div class="bar"><i></i><span>Turtle Bloom</span></div>
+  <div class="body">
+    <h1>Turtle <em>Bloom</em></h1>
+    <div id="levelname"></div>
+    <div id="levels"></div>
+    <div id="note"></div>
+  </div>
+</section>
+
+<section class="win" id="goals">
+  <div class="bar"><i></i><span>garden.goals</span></div>
+  <div class="body"><ul id="goallist"></ul><div id="status"></div></div>
+</section>
+
+<section class="win" id="panel">
+  <div class="bar"><i></i><span>garden.logo</span></div>
+  <div class="body">
+    <div id="palette"></div>
+    <textarea id="code" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+    <div id="meta"><span id="count">0 words</span><span id="par"></span></div>
+    <div id="controls">
+      <button id="run" class="default">Run</button>
+      <button id="reset">Reset</button>
+      <button id="helpbtn" title="Commands">?</button>
+      <button id="mute" title="Sound">♪</button>
+      <label>speed <input id="speed" type="range" min="0.5" max="4" step="0.25" value="1.25"></label>
+    </div>
+    <div id="queuewin"><div class="bar"><span>turtle.queue</span></div><ol id="queue"></ol></div>
+  </div>
+</section>
+
+<section class="win" id="dialog">
+  <div class="bar"><span>Garden complete</span></div>
+  <div class="body">
+    <svg viewBox="0 0 54 54" width="54" height="54"><ellipse cx="27" cy="32" rx="19" ry="14" fill="#4caf50" stroke="#1b1724" stroke-width="2.5"/><path d="M14 30 q13 -12 26 0" fill="none" stroke="#8bd06b" stroke-width="3"/><circle cx="27" cy="13" r="7" fill="#8fd16a" stroke="#1b1724" stroke-width="2.5"/><circle cx="24.5" cy="12" r="1.6" fill="#1b1724"/><circle cx="29.5" cy="12" r="1.6" fill="#1b1724"/></svg>
+    <div>
+      <div class="stars" id="dstars"></div>
+      <p id="dmsg"></p>
+      <p id="dsub" style="font-size:13px;color:#5d566a"></p>
+    </div>
+    <div class="btns"><button id="again">Again</button><button id="next" class="default">Next garden</button></div>
+  </div>
+</section>
+
+<section class="win" id="help">
+  <div class="bar"><i id="helpclose" style="cursor:pointer"></i><span>Commands</span></div>
+  <div class="body help">
+    <table>
+      <tr><td><code>fd 3</code></td><td>forward three squares (<code>forward</code>)</td></tr>
+      <tr><td><code>bk 2</code></td><td>back two squares (<code>back</code>)</td></tr>
+      <tr><td><code>lt 90</code> <code>rt 90</code></td><td>turn left / right; right angles only</td></tr>
+      <tr><td><code>pd</code> <code>pu</code></td><td>pen down / pen up</td></tr>
+      <tr><td><code>repeat 4 [ … ]</code></td><td>do the bracketed part four times</td></tr>
+      <tr><td><code>to hop … end</code></td><td>teach the turtle a new word</td></tr>
+      <tr><td><code>; note</code></td><td>a comment</td></tr>
+    </table>
+    <p>Bloom every flower, paint every dotted square (and only those), sink every marble. Turtles push marbles, bonk on rocks, and fall off edges. Fewer words, more stars.</p>
+    <p><b>⌘/Ctrl + Enter</b> runs. Drag to look around.</p>
+  </div>
+</section>
+
+<script id="logic">
+// Pure game logic: no DOM, no three. Shared by the page and tools/check.mjs.
+var TB = (function () {
+  var DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]];          // N E S W as (dx, dy)
+  var DIRNUM = { N: 0, E: 1, S: 2, W: 3 };
+  var PAIRS = { A: 'B', B: 'A', C: 'D', D: 'C' };
+
+  var LEVELS = [
+    { name: 'Hello, Turtle', map: ['.....', '...f.', '.....'], start: [0, 1, 'E'], par: 1, sol: 'fd 3',
+      note: 'Type <code>fd 3</code> and press Run.' },
+    { name: 'Corner', map: ['...', '...', '#.f'], start: [0, 0, 'E'], par: 3, sol: 'fd 2 rt 90 fd 2',
+      note: '<code>rt 90</code> turns right, <code>lt 90</code> turns left.' },
+    { name: 'Round the Pond', map: ['.f.f.', 'f   f', '.   .', 'f   .', '..f..'], start: [0, 4, 'N'], par: 3, sol: 'repeat 4 [fd 4 rt 90]',
+      note: '<code>repeat 4 [ … ]</code> does the bracketed part four times.' },
+    { name: 'Pen Down', map: ['......', '.xxx.f', '......'], start: [0, 1, 'E'], par: 5, sol: 'fd pd fd 2 pu fd 2',
+      note: '<code>pd</code> puts the pen down, <code>pu</code> lifts it. Paint the dotted squares and nothing else.' },
+    { name: 'Square', map: ['xxx', 'x x', 'xxx'], start: [0, 2, 'N'], par: 4, sol: 'pd repeat 4 [fd 2 rt 90]',
+      note: 'Four sides, four turns.' },
+    { name: 'Stairs', map: ['x    ', 'xx   ', ' xx  ', '  xx ', '   xf'], start: [0, 0, 'S'], par: 6, sol: 'pd repeat 4 [fd lt 90 fd rt 90]',
+      note: 'A bare <code>fd</code> means <code>fd 1</code>.' },
+    { name: 'Marble', map: ['.....', '..o.u', '...f.'], start: [0, 1, 'E'], par: 3, sol: 'fd 3 rt 90 fd',
+      note: 'Turtles push marbles. Sink every marble in a cup.' },
+    { name: 'Two Marbles', map: ['..f..', '.o.o.', '.....', '.u.u.', '.....'], start: [2, 4, 'N'], par: 10,
+      sol: 'fd 4 lt 90 fd lt 90 fd 2 bk 2 lt 90 fd 2 rt 90 fd 2',
+      note: '<code>bk 2</code> walks backward without turning around.' },
+    { name: 'Hop', map: ['...   ....', 'f..A  B..f', '...   ....'], start: [1, 1, 'E'], par: 2, sol: 'bk fd 6',
+      note: 'Step into a ring and come out its twin.' },
+    { name: 'Twin Squares', map: ['xxx.xxx', 'x x x x', 'xxx.xxx'], start: [0, 2, 'N'], par: 9,
+      sol: 'repeat 2 [pd repeat 4 [fd 2 rt 90] pu rt 90 fd 4 lt 90]',
+      note: 'A repeat can hold another repeat.' },
+    { name: 'Window', map: ['xxxxx', 'x x x', 'xxxxx', 'x x x', 'xxxxx'], start: [2, 2, 'N'], par: 6,
+      sol: 'pd repeat 4 [repeat 4 [fd 2 rt 90] rt 90]',
+      note: 'Four panes, one turtle.' },
+    { name: 'Compass Rose', map: ['...f...', '.#...#.', '...x...', 'f.xxx.f', '...x...', '.#...#.', '...f...'], start: [3, 3, 'N'], par: 7,
+      sol: 'repeat 4 [pd fd pu fd 2 bk 3 rt 90]',
+      note: 'Or teach it a word: <code>to petal … end</code>' },
+  ];
+
+  function key(x, y) { return x + ',' + y; }
+
+  function parseLevel(L) {
+    var h = L.map.length, w = 0, i;
+    for (i = 0; i < h; i++) w = Math.max(w, L.map[i].length);
+    var tiles = [], marbles = [], flowers = [], targets = [], cups = [], teles = {};
+    for (var y = 0; y < h; y++) {
+      var row = [];
+      for (var x = 0; x < w; x++) {
+        var ch = L.map[y][x] || ' ', t = { x: x, y: y, kind: 'grass', target: false };
+        if (ch === ' ') t.kind = 'void';
+        else if (ch === '#') t.kind = 'rock';
+        else if (ch === 'f') { t.kind = 'flower'; flowers.push(key(x, y)); }
+        else if (ch === 'x') { t.target = true; targets.push(key(x, y)); }
+        else if (ch === 'o') marbles.push({ x: x, y: y });
+        else if (ch === 'u') { t.kind = 'cup'; cups.push(key(x, y)); }
+        else if (PAIRS[ch]) { t.kind = 'tele'; t.tele = ch; teles[ch] = [x, y]; }
+        row.push(t);
+      }
+      tiles.push(row);
+    }
+    for (y = 0; y < h; y++) for (x = 0; x < w; x++) {
+      var tt = tiles[y][x];
+      if (tt.kind === 'tele') tt.partner = teles[PAIRS[tt.tele]];
+    }
+    return { w: w, h: h, tiles: tiles, marbles: marbles, flowers: flowers, targets: targets, cups: cups,
+             start: { x: L.start[0], y: L.start[1], d: DIRNUM[L.start[2]] } };
+  }
+
+  // ---- Logo ----
+  var ALIAS = { forward: 'fd', back: 'bk', backward: 'bk', left: 'lt', right: 'rt', penup: 'pu', pendown: 'pd' };
+  var PRIMS = { fd: 1, bk: 1, lt: 1, rt: 1, pu: 1, pd: 1, repeat: 1, to: 1, end: 1 };
+
+  function LogoError(msg, tok) { var e = new Error(msg); e.tok = tok; return e; }
+
+  function tokenize(src) {
+    var toks = [], re = /;[^\n]*|\[|\]|[^\s\[\];]+/g, m;
+    while ((m = re.exec(src))) {
+      if (m[0][0] === ';') continue;
+      toks.push({ v: m[0].toLowerCase(), raw: m[0], start: m.index, end: m.index + m[0].length });
+    }
+    return toks;
+  }
+
+  function parse(src) {
+    var toks = tokenize(src), i = 0, procs = {}, count = 0;
+    function isNum(t) { return t && /^-?\d+$/.test(t.v); }
+    function num(dflt) { return isNum(toks[i]) ? +toks[i++].v : dflt; }
+    function block(close, opener) {
+      var body = [];
+      for (;;) {
+        if (i >= toks.length) {
+          if (close) throw LogoError(close === ']' ? 'This [ never closes.' : 'TO ' + opener.v.toUpperCase() + ' needs an END.', opener);
+          return body;
+        }
+        var t = toks[i];
+        if (close && t.v === close) { i++; return body; }
+        if (t.v === ']') throw LogoError('There is a ] without a [.', t);
+        var s = stmt(close);
+        if (s) body.push(s);
+      }
+    }
+    function stmt(close) {
+      var t = toks[i++], w = ALIAS[t.v] || t.v;
+      if (w === 'fd' || w === 'bk') {
+        count++;
+        var n = num(1);
+        if (n < 0) throw LogoError('Use ' + (w === 'fd' ? 'bk' : 'fd') + ' to go the other way.', t);
+        return { op: w, n: n, tok: t, label: w + ' ' + n };
+      }
+      if (w === 'lt' || w === 'rt') {
+        count++;
+        var a = num(90);
+        if (a % 90) throw LogoError('This turtle only turns in right angles. Try ' + w + ' 90.', t);
+        return { op: w, n: (((a / 90) % 4) + 4) % 4, tok: t, label: w + ' ' + a };
+      }
+      if (w === 'pu' || w === 'pd') { count++; return { op: w, tok: t, label: w }; }
+      if (w === 'repeat') {
+        count++;
+        var r = num(null);
+        if (r === null || r < 0) throw LogoError('REPEAT needs a number, like repeat 4 [ fd ].', t);
+        if (!toks[i] || toks[i].v !== '[') throw LogoError('REPEAT ' + r + ' needs [ … ] after it.', t);
+        var open = toks[i++];
+        return { op: 'repeat', n: r, body: block(']', open), tok: t };
+      }
+      if (w === 'to') {
+        if (close) throw LogoError('Put TO at the top level, not inside brackets.', t);
+        count++;
+        var nm = toks[i++];
+        if (!nm || !/^[a-z_][a-z0-9_.-]*$/.test(nm.v) || PRIMS[ALIAS[nm.v] || nm.v]) throw LogoError('TO needs a new name, like to hop.', t);
+        procs[nm.v] = block('end', nm);
+        return null;
+      }
+      if (w === 'end') throw LogoError('There is an END without a TO.', t);
+      if (w === '[') throw LogoError('A [ needs a REPEAT in front of it.', t);
+      if (isNum(t)) throw LogoError("You don't say what to do with " + t.raw + '.', t);
+      count++;
+      return { op: 'call', name: w, tok: t };
+    }
+    var prog = block(null);
+    return { prog: prog, procs: procs, count: count };
+  }
+
+  function expand(parsed, limit) {
+    limit = limit || 3000;
+    var out = [];
+    function run(list, depth) {
+      for (var j = 0; j < list.length; j++) {
+        var s = list[j];
+        if (s.op === 'repeat') { for (var k = 0; k < s.n; k++) run(s.body, depth); }
+        else if (s.op === 'call') {
+          var b = parsed.procs[s.name];
+          if (!b) throw LogoError("I don't know how to " + s.name.toUpperCase() + '.', s.tok);
+          if (depth > 100) throw LogoError(s.name.toUpperCase() + ' keeps calling itself.', s.tok);
+          run(b, depth + 1);
+        } else {
+          out.push(s);
+          if (out.length > limit) throw LogoError('That program would run all day. Try fewer repeats.', s.tok);
+        }
+      }
+    }
+    run(parsed.prog, 0);
+    return out;
+  }
+
+  // ---- Simulation: returns the full event list; the page just animates it ----
+  function simulate(level, prims) {
+    var L = parseLevel(level);
+    var S = { x: L.start.x, y: L.start.y, d: L.start.d, pen: false };
+    var marbles = {}, bloomed = {}, painted = {}, filled = {}, ev = [], strays = 0;
+    L.marbles.forEach(function (m, id) { marbles[key(m.x, m.y)] = id; });
+    var VOID = { kind: 'void' };
+    function at(x, y) { return (y < 0 || y >= L.h || x < 0 || x >= L.w) ? VOID : L.tiles[y][x]; }
+    function progress() {
+      return {
+        flowers: [L.flowers.filter(function (f) { return bloomed[f]; }).length, L.flowers.length],
+        cups: [L.cups.filter(function (c) { return filled[c]; }).length, L.cups.length],
+        targets: [L.targets.filter(function (t) { return painted[t]; }).length, L.targets.length],
+        strays: strays,
+      };
+    }
+    function won() {
+      return L.flowers.every(function (f) { return bloomed[f]; }) && L.cups.every(function (c) { return filled[c]; }) &&
+             L.targets.every(function (t) { return painted[t]; }) && strays === 0;
+    }
+    function paintHere() {
+      var k = key(S.x, S.y), t = at(S.x, S.y);
+      if (painted[k]) return;
+      if (t.kind === 'grass' || (t.kind === 'cup' && filled[k])) {
+        painted[k] = 1;
+        if (!t.target) strays++;
+        ev.push({ t: 'paint', x: S.x, y: S.y, stray: !t.target, p: progress() });
+      }
+    }
+    function step(dir) {
+      var dx = DIRS[dir][0], dy = DIRS[dir][1], nx = S.x + dx, ny = S.y + dy, nk = key(nx, ny), t = at(nx, ny);
+      if (t.kind === 'void') { ev.push({ t: 'fall', from: [S.x, S.y], dir: dir }); return 'fall'; }
+      if (t.kind === 'rock' || (t.kind === 'cup' && !filled[nk])) { ev.push({ t: 'bump', dir: dir, what: t.kind }); return 'bump'; }
+      var push = null, mid = marbles[nk];
+      if (mid !== undefined) {
+        var mx = nx + dx, my = ny + dy, mk = key(mx, my), mt = at(mx, my);
+        if (mt.kind === 'rock' || mt.kind === 'flower' || mt.kind === 'tele' || marbles[mk] !== undefined) {
+          ev.push({ t: 'bump', dir: dir, what: 'marble' }); return 'bump';
+        }
+        delete marbles[nk];
+        var fate = mt.kind === 'void' ? 'fall' : (mt.kind === 'cup' && !filled[mk]) ? 'cup' : 'roll';
+        if (fate === 'roll') marbles[mk] = mid;
+        if (fate === 'cup') filled[mk] = 1;
+        push = { id: mid, to: [mx, my], fate: fate };
+      }
+      ev.push({ t: 'move', from: [S.x, S.y], to: [nx, ny], dir: dir, push: push, p: progress() });
+      S.x = nx; S.y = ny;
+      if (push && push.fate === 'fall') return 'lost';
+      if (t.kind === 'flower' && !bloomed[nk]) { bloomed[nk] = 1; ev.push({ t: 'bloom', x: nx, y: ny, p: progress() }); }
+      if (t.kind === 'tele') { ev.push({ t: 'teleport', from: [nx, ny], to: t.partner }); S.x = t.partner[0]; S.y = t.partner[1]; }
+      if (S.pen) paintHere();
+      return 'ok';
+    }
+
+    var result = 'incomplete';
+    outer:
+    for (var i = 0; i < prims.length; i++) {
+      var p = prims[i];
+      ev.push({ t: 'cmd', i: i });
+      if (p.op === 'fd' || p.op === 'bk') {
+        var dir = p.op === 'fd' ? S.d : (S.d + 2) % 4;
+        for (var n = 0; n < p.n; n++) {
+          var r = step(dir);
+          if (r === 'bump') break;
+          if (r === 'fall' || r === 'lost') { result = r; break outer; }
+          if (won()) { result = 'win'; break outer; }
+        }
+      } else if (p.op === 'lt' || p.op === 'rt') {
+        var delta = p.op === 'rt' ? p.n : -p.n;
+        S.d = (S.d + delta + 8) % 4;
+        ev.push({ t: 'turn', d: S.d, delta: delta });
+      } else if (p.op === 'pu' || p.op === 'pd') {
+        S.pen = p.op === 'pd';
+        ev.push({ t: 'pen', down: S.pen });
+        if (S.pen) { paintHere(); if (won()) { result = 'win'; break; } }
+      }
+    }
+    if (result === 'win') ev.push({ t: 'win' });
+    return { events: ev, result: result, progress: progress() };
+  }
+
+  function stars(count, par) { return count <= par ? 3 : count <= par + 3 ? 2 : 1; }
+
+  function run(level, src) {
+    var parsed = parse(src), prims = expand(parsed), sim = simulate(level, prims);
+    sim.prims = prims; sim.count = parsed.count;
+    return sim;
+  }
+
+  return { LEVELS: LEVELS, DIRS: DIRS, parseLevel: parseLevel, parse: parse, expand: expand, simulate: simulate, run: run, stars: stars, key: key };
+})();
+if (typeof module !== 'undefined') module.exports = TB;
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { OutlineEffect } from 'three/addons/effects/OutlineEffect.js';
+
+const $ = (id) => document.getElementById(id);
+const LEVELS = TB.LEVELS;
+
+// ---------- persistence (per-viewer convenience only) ----------
+const STORE = 'turtlebloom:v1';
+let save = { stars: {}, programs: {} };
+try { save = Object.assign(save, JSON.parse(localStorage.getItem(STORE) || '{}')); } catch {}
+function persist() { try { localStorage.setItem(STORE, JSON.stringify(save)); } catch {} }
+
+// ---------- sound ----------
+let ac = null, muted = false;
+try { muted = localStorage.getItem(STORE + ':muted') === '1'; } catch {}
+function tone(freq, dur = 0.12, type = 'triangle', vol = 0.08, slide = 1, delay = 0) {
+  if (muted) return;
+  try {
+    ac ??= new (window.AudioContext || window.webkitAudioContext)();
+    const t = ac.currentTime + delay, o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t);
+    if (slide !== 1) o.frequency.exponentialRampToValueAtTime(freq * slide, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur + 0.02);
+  } catch {}
+}
+const PENTA = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21];
+const note = (i) => 330 * Math.pow(2, PENTA[i % PENTA.length] / 12);
+
+// ---------- renderer ----------
+const canvas = $('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFShadowMap;
+const effect = new OutlineEffect(renderer, { defaultThickness: 0.0075, defaultColor: [0.106, 0.09, 0.141], defaultAlpha: 1 });
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0xcdeeff, 30, 110);
+const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 400);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.enablePan = false;
+controls.minPolarAngle = 0.25; controls.maxPolarAngle = 1.25;
+controls.minDistance = 6; controls.maxDistance = 60;
+
+scene.add(new THREE.HemisphereLight(0xfff4e0, 0x8fa6d6, 1.4));
+const sun = new THREE.DirectionalLight(0xffffff, 2.6);
+sun.position.set(-5, 12, 6);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -10, right: 10, top: 10, bottom: -10, near: 1, far: 40 });
+sun.shadow.bias = -0.002;
+scene.add(sun);
+
+const grad = new THREE.DataTexture(new Uint8Array([95, 95, 95, 255, 175, 175, 175, 255, 255, 255, 255, 255]), 3, 1);
+grad.minFilter = grad.magFilter = THREE.NearestFilter; grad.needsUpdate = true;
+const matCache = new Map();
+function toon(color, extra) {
+  const k = color + (extra ? JSON.stringify(extra) : '');
+  if (!extra && matCache.has(k)) return matCache.get(k);
+  const m = new THREE.MeshToonMaterial({ color, gradientMap: grad, ...(extra || {}) });
+  if (!extra) matCache.set(k, m);
+  return m;
+}
+function noLine(m) { m.userData.outlineParameters = { visible: false }; return m; }
+function mesh(geo, mat, cast = true, receive = true) { const o = new THREE.Mesh(geo, mat); o.castShadow = cast; o.receiveShadow = receive; return o; }
+
+// brush-stroke texture for paint
+const brushTex = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
+  let s = 7; const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+  g.fillStyle = '#fff';
+  for (let i = 0; i < 260; i++) { g.globalAlpha = 0.5 + rnd() * 0.5; g.beginPath(); g.arc(14 + rnd() * 100, 14 + rnd() * 100, 6 + rnd() * 9, 0, 7); g.fill(); }
+  g.globalAlpha = 1; g.globalCompositeOperation = 'destination-out';
+  for (let i = 0; i < 30; i++) { g.beginPath(); g.arc(20 + rnd() * 90, 20 + rnd() * 90, 1 + rnd() * 2, 0, 7); g.fill(); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+})();
+function marbleTex(a, b) {
+  const c = document.createElement('canvas'); c.width = 128; c.height = 64; const g = c.getContext('2d');
+  g.fillStyle = a; g.fillRect(0, 0, 128, 64);
+  g.fillStyle = b;
+  for (let i = 0; i < 3; i++) { g.beginPath(); g.ellipse(20 + i * 44, 32, 9, 34, 0.5, 0, 7); g.fill(); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+
+// ---------- sky dressing: sea, clouds ----------
+const sea = mesh(new THREE.CircleGeometry(400, 64), noLine(toon(0x4aa6dc)), false, true);
+sea.rotation.x = -Math.PI / 2; sea.position.y = -9; scene.add(sea);
+const waves = new THREE.Group(); scene.add(waves);
+for (let i = 0; i < 40; i++) {
+  const w = mesh(new THREE.CapsuleGeometry(0.06, 0.7 + Math.random() * 1.2, 2, 6), noLine(new THREE.MeshBasicMaterial({ color: 0xd9f3ff })), false, false);
+  w.rotation.z = Math.PI / 2; w.rotation.y = Math.random() * 3;
+  const r = 6 + Math.random() * 30, a = Math.random() * Math.PI * 2;
+  w.position.set(Math.cos(a) * r, -8.95, Math.sin(a) * r); w.userData.ph = Math.random() * 6; waves.add(w);
+}
+const clouds = [];
+for (let i = 0; i < 9; i++) {
+  const c = new THREE.Group();
+  const n = 3 + (i % 3);
+  for (let j = 0; j < n; j++) {
+    const s = mesh(new THREE.SphereGeometry(0.6 + Math.random() * 0.5, 16, 12), toon(0xffffff), false, false);
+    s.position.set(j * 0.8 - n * 0.4, Math.random() * 0.3, Math.random() * 0.5); s.scale.y = 0.75; c.add(s);
+  }
+  const a = (i / 9) * Math.PI * 2, r = 11 + (i % 3) * 4;
+  c.position.set(Math.cos(a) * r, -3 + (i % 4) * 1.6, Math.sin(a) * r);
+  c.userData = { a, r, sp: 0.01 + Math.random() * 0.015 };
+  scene.add(c); clouds.push(c);
+}
+
+// ---------- turtle ----------
+const INK = 0xe8553d, STRAY = 0x7a6aa8;
+function makeTurtle() {
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  const shell = mesh(new THREE.SphereGeometry(0.3, 22, 12, 0, Math.PI * 2, 0, Math.PI / 2), toon(0x3f9e4d));
+  shell.scale.set(1, 0.72, 1.15); shell.position.y = 0.09; body.add(shell);
+  const rim = mesh(new THREE.TorusGeometry(0.3, 0.035, 8, 28), toon(0xf3e3a6));
+  rim.rotation.x = Math.PI / 2; rim.scale.set(1, 1.15, 1); rim.position.y = 0.09; body.add(rim);
+  const plate = mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.03, 6), toon(0x8bd06b)); plate.position.y = 0.3; body.add(plate);
+  for (let k = 0; k < 5; k++) {
+    const p = mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.03, 6), toon(0x8bd06b));
+    const a = k / 5 * Math.PI * 2 + 0.3; p.position.set(Math.cos(a) * 0.17, 0.26, Math.sin(a) * 0.19);
+    p.lookAt(p.position.clone().multiplyScalar(2).setY(0.9)); p.rotateX(Math.PI / 2); body.add(p);
+  }
+  const head = new THREE.Group(); head.position.set(0, 0.17, -0.38); body.add(head);
+  head.add(mesh(new THREE.SphereGeometry(0.13, 18, 14), toon(0x8fd16a)));
+  for (const sx of [-1, 1]) {
+    const eye = mesh(new THREE.SphereGeometry(0.03, 10, 8), toon(0x1b1724), false, false); eye.position.set(sx * 0.06, 0.04, -0.105); head.add(eye);
+    const glint = mesh(new THREE.SphereGeometry(0.01, 6, 6), noLine(new THREE.MeshBasicMaterial({ color: 0xffffff })), false, false);
+    glint.position.set(sx * 0.06 + 0.01, 0.055, -0.13); head.add(glint);
+    const cheek = mesh(new THREE.CircleGeometry(0.025, 12), noLine(new THREE.MeshBasicMaterial({ color: 0xff8f8f, transparent: true, opacity: 0.8 })), false, false);
+    cheek.position.set(sx * 0.095, -0.01, -0.085); cheek.rotation.y = sx * 0.9 + Math.PI; head.add(cheek);
+  }
+  const legs = [];
+  for (const [lx, lz] of [[-0.2, -0.2], [0.2, -0.2], [-0.2, 0.22], [0.2, 0.22]]) {
+    const pivot = new THREE.Group(); pivot.position.set(lx, 0.1, lz);
+    const leg = mesh(new THREE.CapsuleGeometry(0.055, 0.07, 4, 8), toon(0x8fd16a)); leg.position.y = -0.05; pivot.add(leg);
+    body.add(pivot); legs.push(pivot);
+  }
+  const tail = mesh(new THREE.ConeGeometry(0.04, 0.13, 8), toon(0x8fd16a)); tail.rotation.x = Math.PI / 2 + 0.3; tail.position.set(0, 0.08, 0.4); body.add(tail);
+  // the pen: a crayon on the turtle's back
+  const pen = new THREE.Group(); pen.position.set(0.12, 0.3, 0.18); body.add(pen);
+  const crayon = new THREE.Group(); pen.add(crayon);
+  const stick = mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.3, 10), toon(INK)); stick.position.y = 0.15; crayon.add(stick);
+  const wrap = mesh(new THREE.CylinderGeometry(0.037, 0.037, 0.12, 10), toon(0xfff1d0)); wrap.position.y = 0.17; crayon.add(wrap);
+  const tip = mesh(new THREE.ConeGeometry(0.035, 0.07, 10), toon(INK)); tip.position.y = -0.035; tip.rotation.x = Math.PI; crayon.add(tip);
+  crayon.rotation.z = -0.35;
+  body.scale.setScalar(1.3);
+  g.userData = { body, head, legs, pen, crayon, penDown: 0 };
+  return g;
+}
+
+// ---------- level building ----------
+const world = new THREE.Group(); scene.add(world);
+const fx = new THREE.Group(); scene.add(fx);
+let L = null, levelIdx = 0, turtle = null, objs = {};
+const FLOWER_COLORS = [0xff7eb6, 0xffd23f, 0xb48cff, 0xff9a4d, 0x6ad1ff];
+const TELE_COLORS = { A: 0x9b6bff, B: 0x9b6bff, C: 0x2fc4b2, D: 0x2fc4b2 };
+const wp = (x, y) => new THREE.Vector3(x - (L.w - 1) / 2, 0, y - (L.h - 1) / 2);
+const yaw = (d) => [0, -Math.PI / 2, Math.PI, Math.PI / 2][d];
+function seeded(x, y) { let s = (x * 73856093) ^ (y * 19349663) ^ (levelIdx * 83492791); return () => ((s = (s * 16807 + 11) % 2147483647) & 0xffff) / 0xffff; }
+
+function clear(g) { while (g.children.length) g.remove(g.children[0]); }
+
+function makeFlower(color) {
+  const f = new THREE.Group();
+  const stem = mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.34, 6), toon(0x3c8f3c)); stem.position.y = 0.17; f.add(stem);
+  const leaf = mesh(new THREE.SphereGeometry(0.07, 8, 6), toon(0x5cbf4a)); leaf.scale.set(1, 0.3, 0.5); leaf.position.set(0.06, 0.12, 0); leaf.rotation.z = 0.5; f.add(leaf);
+  const head = new THREE.Group(); head.position.y = 0.36; f.add(head);
+  const bud = mesh(new THREE.SphereGeometry(0.085, 12, 10), toon(color)); bud.scale.y = 1.3; head.add(bud);
+  const petals = new THREE.Group(); head.add(petals);
+  for (let k = 0; k < 6; k++) {
+    const p = mesh(new THREE.SphereGeometry(0.085, 12, 8), toon(color)); p.scale.set(1, 0.32, 0.62);
+    const a = k / 6 * Math.PI * 2; p.position.set(Math.cos(a) * 0.12, 0, Math.sin(a) * 0.12); p.rotation.y = -a; p.rotation.z = 0.25; petals.add(p);
+  }
+  const eye = mesh(new THREE.SphereGeometry(0.07, 12, 10), toon(0xffe066)); eye.scale.y = 0.6; eye.position.y = 0.02; petals.add(eye);
+  petals.scale.setScalar(0.001);
+  f.scale.setScalar(1.3);
+  f.userData = { head, bud, petals, ph: Math.random() * 6, open: 0 };
+  return f;
+}
+
+function buildLevel(idx) {
+  levelIdx = idx;
+  L = TB.parseLevel(LEVELS[idx]);
+  clear(world); clear(fx); objs = { flowers: {}, marbles: [], cups: {}, paint: {}, teles: [] };
+  for (const row of L.tiles) for (const t of row) {
+    if (t.kind === 'void') continue;
+    const p = wp(t.x, t.y), rnd = seeded(t.x, t.y);
+    const check = (t.x + t.y) % 2 ? 0x7bcf55 : 0x6cc04b;
+    const top = mesh(new THREE.BoxGeometry(0.98, 0.2, 0.98), toon(check)); top.position.set(p.x, -0.1, p.z); world.add(top);
+    const dirt = mesh(new THREE.BoxGeometry(0.98, 0.45, 0.98), toon(0xb07a4f)); dirt.position.set(p.x, -0.42, p.z); world.add(dirt);
+    const h = 0.5 + rnd() * 1.3;
+    const cone = mesh(new THREE.ConeGeometry(0.42 + rnd() * 0.12, h, 5), toon(0x8c5c3b)); cone.rotation.x = Math.PI; cone.rotation.y = rnd() * 3;
+    cone.position.set(p.x + (rnd() - 0.5) * 0.15, -0.64 - h / 2, p.z + (rnd() - 0.5) * 0.15); world.add(cone);
+    if (rnd() < 0.3 && t.kind === 'grass' && !t.target) {
+      const tuft = new THREE.Group();
+      for (let k = 0; k < 3; k++) { const b = mesh(new THREE.ConeGeometry(0.025, 0.14, 4), toon(0x4fa83a), false); b.position.set((k - 1) * 0.05, 0.07, rnd() * 0.04); b.rotation.z = (k - 1) * 0.35; tuft.add(b); }
+      tuft.position.set(p.x + (rnd() - 0.5) * 0.6, 0, p.z + (rnd() - 0.5) * 0.6); world.add(tuft);
+    }
+    if (t.target) {
+      const dm = noLine(new THREE.MeshBasicMaterial({ color: INK, transparent: true, opacity: 0.8 }));
+      for (let s = 0; s < 4; s++) for (let k = -1; k <= 1; k++) {
+        const d = mesh(new THREE.BoxGeometry(0.13, 0.012, 0.045), dm, false, false);
+        const o = 0.36, along = k * 0.26;
+        if (s === 0) d.position.set(p.x + along, 0.003, p.z - o);
+        if (s === 1) d.position.set(p.x + along, 0.003, p.z + o);
+        if (s === 2) { d.position.set(p.x - o, 0.003, p.z + along); d.rotation.y = Math.PI / 2; }
+        if (s === 3) { d.position.set(p.x + o, 0.003, p.z + along); d.rotation.y = Math.PI / 2; }
+        world.add(d);
+      }
+    }
+    if (t.kind === 'rock') {
+      const r = mesh(new THREE.DodecahedronGeometry(0.34, 0), toon(0xa3a8b3));
+      r.position.set(p.x, 0.2, p.z); r.scale.y = 0.8; r.rotation.set(rnd(), rnd() * 3, rnd()); world.add(r);
+      const r2 = mesh(new THREE.DodecahedronGeometry(0.15, 0), toon(0xb9bdc6)); r2.position.set(p.x + 0.28, 0.08, p.z + 0.2); world.add(r2);
+    }
+    if (t.kind === 'flower') {
+      const f = makeFlower(FLOWER_COLORS[(t.x * 3 + t.y * 5) % FLOWER_COLORS.length]); f.position.copy(p); world.add(f);
+      objs.flowers[TB.key(t.x, t.y)] = f;
+    }
+    if (t.kind === 'cup') {
+      const ring = mesh(new THREE.TorusGeometry(0.29, 0.07, 10, 28), toon(0xc58a4a)); ring.rotation.x = Math.PI / 2; ring.position.set(p.x, 0.03, p.z); world.add(ring);
+      const hole = mesh(new THREE.CircleGeometry(0.28, 28), noLine(new THREE.MeshBasicMaterial({ color: 0x241a14 })), false, false); hole.rotation.x = -Math.PI / 2; hole.position.set(p.x, 0.004, p.z); world.add(hole);
+      objs.cups[TB.key(t.x, t.y)] = ring;
+    }
+    if (t.kind === 'tele') {
+      const g = new THREE.Group(); g.position.copy(p);
+      const c = TELE_COLORS[t.tele];
+      const r1 = mesh(new THREE.TorusGeometry(0.32, 0.05, 8, 32), toon(c)); r1.rotation.x = Math.PI / 2; r1.position.y = 0.04; g.add(r1);
+      const r2 = mesh(new THREE.TorusGeometry(0.2, 0.04, 8, 24), toon(0xffffff)); r2.rotation.x = Math.PI / 2; r2.position.y = 0.28; g.add(r2);
+      const r3 = mesh(new THREE.TorusGeometry(0.12, 0.035, 8, 20), toon(c)); r3.rotation.x = Math.PI / 2; r3.position.y = 0.48; g.add(r3);
+      const glow = mesh(new THREE.CircleGeometry(0.3, 28), noLine(new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.45 })), false, false); glow.rotation.x = -Math.PI / 2; glow.position.y = 0.006; g.add(glow);
+      g.userData = { rings: [r2, r3], ph: t.x + t.y };
+      world.add(g); objs.teles.push(g);
+    }
+  }
+  L.marbles.forEach((m, id) => {
+    const palette = [['#ff6f59', '#ffe9c7'], ['#3d8bfd', '#d8ecff'], ['#ffc93c', '#ff6f59']][id % 3];
+    const mat = new THREE.MeshToonMaterial({ gradientMap: grad, map: marbleTex(...palette) });
+    const g = new THREE.Group(), s = mesh(new THREE.SphereGeometry(0.21, 22, 16), mat); s.position.y = 0.21; g.add(s);
+    const shine = mesh(new THREE.SphereGeometry(0.045, 8, 6), noLine(new THREE.MeshBasicMaterial({ color: 0xffffff })), false, false); shine.position.set(-0.08, 0.34, -0.08); g.add(shine);
+    g.position.copy(wp(m.x, m.y)); g.userData = { ball: s, alive: true };
+    world.add(g); objs.marbles.push(g);
+  });
+  turtle = makeTurtle();
+  placeTurtle();
+  world.add(turtle);
+  frame();
+}
+
+function placeTurtle() {
+  turtle.position.copy(wp(L.start.x, L.start.y));
+  turtle.rotation.set(0, yaw(L.start.d), 0);
+  turtle.scale.setScalar(1);
+  setPen(0);
+}
+function setPen(v) { const u = turtle.userData; u.penDown = v; u.crayon.rotation.z = -0.35 + v * 1.25; u.pen.position.set(0.12 + v * 0.1, 0.3 - v * 0.24, 0.18 + v * 0.08); }
+
+let fitDist = 12;
+const camTarget = new THREE.Vector3(0, -0.4, 0);
+function frame() {
+  const r = Math.max(L.w, L.h) * 0.5 + 1.0;
+  fitDist = r / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * (camera.aspect < 1 ? 1.0 / camera.aspect : 1.3);
+  const dir = new THREE.Vector3(0.48, 0.62, 1.0).normalize();
+  controls.target.copy(camTarget);
+  camera.position.copy(camTarget).addScaledVector(dir, fitDist);
+  controls.update();
+}
+
+// ---------- tweens & particles ----------
+let tweens = [], parts = [];
+let speed = 1.25;
+function tween(ms, fn, ease = (p) => p) {
+  return new Promise((res) => tweens.push({ t0: performance.now(), ms: ms / speed, fn, ease, res }));
+}
+const easeIO = (p) => p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+const easeBack = (p) => { const c = 1.9; return 1 + (c + 1) * Math.pow(p - 1, 3) + c * Math.pow(p - 1, 2); };
+function sparkle(pos, color, n = 10, up = 1.6) {
+  for (let i = 0; i < n; i++) {
+    const m = mesh(new THREE.OctahedronGeometry(0.05, 0), toon(color), false, false);
+    m.position.copy(pos);
+    const a = Math.random() * Math.PI * 2, s = 0.8 + Math.random() * 1.4;
+    m.userData = { v: new THREE.Vector3(Math.cos(a) * s, up + Math.random() * 1.5, Math.sin(a) * s), life: 0.9 + Math.random() * 0.4, age: 0, spin: Math.random() * 8 };
+    fx.add(m); parts.push(m);
+  }
+}
+function confetti() {
+  const box = Math.max(L.w, L.h) * 0.7 + 1;
+  for (let i = 0; i < 90; i++) {
+    const m = mesh(new THREE.PlaneGeometry(0.1, 0.16), noLine(new THREE.MeshBasicMaterial({ color: FLOWER_COLORS[i % 5], side: THREE.DoubleSide })), false, false);
+    m.position.set((Math.random() - 0.5) * box * 2, 4 + Math.random() * 4, (Math.random() - 0.5) * box * 2);
+    m.userData = { v: new THREE.Vector3((Math.random() - 0.5) * 0.4, -1.2 - Math.random(), (Math.random() - 0.5) * 0.4), life: 6, age: 0, spin: 3 + Math.random() * 6, flutter: Math.random() * 6 };
+    fx.add(m); parts.push(m);
+  }
+}
+function splash(pos) {
+  const ring = mesh(new THREE.TorusGeometry(0.3, 0.06, 6, 24), noLine(new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true })), false, false);
+  ring.rotation.x = Math.PI / 2; ring.position.set(pos.x, -8.9, pos.z); fx.add(ring);
+  tween(900, (p) => { ring.scale.setScalar(1 + p * 5); ring.material.opacity = 1 - p; });
+  sparkle(new THREE.Vector3(pos.x, -8.9, pos.z), 0xd9f3ff, 14, 3);
+}
+
+// ---------- UI ----------
+const codeEl = $('code'), queueEl = $('queue');
+function renderLevels() {
+  $('levels').innerHTML = '';
+  LEVELS.forEach((lv, i) => {
+    const b = document.createElement('button');
+    const st = save.stars[i] || 0;
+    b.innerHTML = `${i + 1}<small>${'★'.repeat(st)}${st ? '☆'.repeat(3 - st) : ''}</small>`;
+    b.title = lv.name;
+    if (i === levelIdx) b.classList.add('on');
+    b.onclick = () => loadLevel(i);
+    $('levels').appendChild(b);
+  });
+}
+const PALETTE = [['fd', 'fd 1'], ['bk', 'bk 1'], ['lt', 'lt 90'], ['rt', 'rt 90'], ['pd', 'pd'], ['pu', 'pu'], ['repeat', 'repeat 4 [ ]'], ['to', 'to name\n  \nend']];
+PALETTE.forEach(([lab, ins]) => {
+  const b = document.createElement('button'); b.textContent = lab;
+  b.onclick = () => {
+    const s = codeEl.selectionStart, e = codeEl.selectionEnd, v = codeEl.value;
+    const pre = s > 0 && !/\s|\[/.test(v[s - 1]) ? ' ' : '';
+    codeEl.value = v.slice(0, s) + pre + ins + v.slice(e);
+    let caret = s + pre.length + ins.length;
+    if (lab === 'repeat') caret -= 2;
+    codeEl.focus(); codeEl.setSelectionRange(caret, caret); onCode();
+  };
+  $('palette').appendChild(b);
+});
+
+function onCode() {
+  save.programs[levelIdx] = codeEl.value; persist();
+  try { const n = TB.parse(codeEl.value).count; $('count').textContent = `${n} word${n === 1 ? '' : 's'}`; }
+  catch { $('count').textContent = '… words'; }
+}
+codeEl.addEventListener('input', onCode);
+codeEl.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); runProgram(); } });
+
+function setGoals(p) {
+  const rows = [];
+  const lv = L;
+  if (lv.flowers.length) rows.push(['flowers bloomed', p.flowers]);
+  if (lv.targets.length) rows.push(['squares painted', p.targets]);
+  if (lv.cups.length) rows.push(['marbles sunk', p.cups]);
+  $('goallist').innerHTML = rows.map(([label, [a, b]]) => `<li class="${a === b ? 'done' : ''}"><span class="chk">${a === b ? '✓' : ''}</span>${label}<b>${a}/${b}</b></li>`).join('')
+    + (p.strays ? `<li class="bad"><span class="chk">!</span>ink outside the lines<b>${p.strays}</b></li>` : '');
+}
+function status(msg, err = false) { $('status').textContent = msg; $('status').classList.toggle('err', err); }
+function emptyProgress() { return { flowers: [0, L.flowers.length], cups: [0, L.cups.length], targets: [0, L.targets.length], strays: 0 }; }
+
+function loadLevel(i) {
+  runId++; tweens = []; parts = [];
+  $('dialog').classList.remove('show');
+  buildLevel(i);
+  const lv = LEVELS[i];
+  $('levelname').textContent = `${i + 1} · ${lv.name}`;
+  $('note').innerHTML = lv.note;
+  $('par').textContent = `par ${lv.par}`;
+  codeEl.value = save.programs[i] ?? '';
+  queueEl.innerHTML = '';
+  setGoals(emptyProgress()); status('');
+  renderLevels(); onCode();
+  try { history.replaceState(null, '', '#' + (i + 1)); } catch {}
+}
+
+function resetBoard() { runId++; tweens = []; parts = []; buildLevel(levelIdx); queueEl.innerHTML = ''; setGoals(emptyProgress()); status(''); $('run').disabled = false; }
+
+// ---------- running ----------
+let runId = 0;
+async function runProgram() {
+  if (ac?.state === 'suspended') ac.resume();
+  resetBoard();
+  const my = runId;
+  let sim;
+  try { sim = TB.run(LEVELS[levelIdx], codeEl.value); }
+  catch (e) {
+    status(e.message, true); tone(140, 0.25, 'square', 0.05, 0.7);
+    if (e.tok) { codeEl.focus(); codeEl.setSelectionRange(e.tok.start, e.tok.end); }
+    return;
+  }
+  if (!sim.prims.length) { status('The turtle waits for instructions.'); return; }
+  queueEl.innerHTML = sim.prims.map((p) => `<li>${p.label}</li>`).join('');
+  const lis = queueEl.children;
+  $('run').disabled = true;
+  status('Running…');
+  let cur = -1, steps = 0;
+  const T = turtle, u = T.userData;
+  for (const ev of sim.events) {
+    if (my !== runId) return;
+    switch (ev.t) {
+      case 'cmd':
+        if (cur >= 0) { lis[cur].classList.remove('now'); lis[cur].classList.add('done'); }
+        cur = ev.i; lis[cur].classList.add('now');
+        lis[cur].scrollIntoView({ block: 'nearest' });
+        break;
+      case 'move': {
+        const a = wp(...ev.from), b = wp(...ev.to);
+        const m = ev.push ? objs.marbles[ev.push.id] : null;
+        const ma = m ? m.position.clone() : null, mb = ev.push ? wp(...ev.push.to) : null;
+        const axis = new THREE.Vector3(TB.DIRS[ev.dir][1], 0, -TB.DIRS[ev.dir][0]); // up × direction
+        tone(note(steps++), 0.1, 'triangle', 0.05);
+        if (m) tone(660, 0.08, 'sine', 0.04, 1.3);
+        let lastQ = 0;
+        await tween(300, (p) => {
+          T.position.lerpVectors(a, b, p); T.position.y = Math.sin(p * Math.PI) * 0.06;
+          u.legs.forEach((l, k) => { l.rotation.x = Math.sin(p * Math.PI * 2 + (k % 3 ? 0 : Math.PI)) * 0.6; });
+          u.body.rotation.z = Math.sin(p * Math.PI * 2) * 0.06;
+          if (m) {
+            m.position.lerpVectors(ma, mb, p);
+            m.userData.ball.rotateOnWorldAxis(axis, (p - lastQ) / 0.21); lastQ = p;
+          }
+        }, easeIO);
+        if (ev.push?.fate === 'cup') {
+          tone(523, 0.18, 'sine', 0.07); tone(784, 0.25, 'sine', 0.07, 1, 0.1);
+          const ring = objs.cups[TB.key(...ev.push.to)];
+          tween(320, (p) => { m.position.y = -p * 0.16; }, easeIO);
+          ring.material = toon(0xffc93c);
+          sparkle(mb.clone().setY(0.2), 0xffc93c, 12);
+        }
+        if (ev.push?.fate === 'fall') {
+          tone(500, 0.6, 'sine', 0.06, 0.3);
+          const dir = new THREE.Vector3(TB.DIRS[ev.dir][0], 0, TB.DIRS[ev.dir][1]);
+          const start = m.position.clone();
+          await tween(1100, (p) => { m.position.copy(start).addScaledVector(dir, p * 1.2); m.position.y = -p * p * 9.1; });
+          splash(m.position);
+        }
+        setGoals(ev.p);
+        break;
+      }
+      case 'turn': {
+        const a = T.rotation.y, b = a - ev.delta * Math.PI / 2;
+        tone(ev.delta > 0 ? 587 : 494, 0.07, 'square', 0.025);
+        await tween(200 + 60 * Math.abs(ev.delta), (p) => { T.rotation.y = a + (b - a) * p; u.legs.forEach((l, k) => { l.rotation.x = Math.sin(p * Math.PI * 2 + k) * 0.4; }); }, easeIO);
+        break;
+      }
+      case 'pen': {
+        const a = u.penDown, b = ev.down ? 1 : 0;
+        tone(ev.down ? 880 : 660, 0.05, 'square', 0.03);
+        await tween(160, (p) => setPen(a + (b - a) * p), easeIO);
+        break;
+      }
+      case 'paint': {
+        const pos = wp(ev.x, ev.y);
+        const m = mesh(new THREE.PlaneGeometry(0.92, 0.92), noLine(new THREE.MeshBasicMaterial({ color: ev.stray ? STRAY : INK, map: brushTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 })), false, false);
+        m.rotation.x = -Math.PI / 2; m.rotation.z = (Math.random() - 0.5) * 0.25; m.position.set(pos.x, 0.007, pos.z); world.add(m);
+        tween(180, (p) => m.scale.setScalar(0.3 + 0.7 * p), easeBack);
+        if (ev.stray) { tone(180, 0.2, 'sawtooth', 0.03); status('Ink outside the lines…', true); }
+        setGoals(ev.p);
+        break;
+      }
+      case 'bloom': {
+        const f = objs.flowers[TB.key(ev.x, ev.y)];
+        tone(784, 0.14, 'sine', 0.07); tone(1175, 0.2, 'sine', 0.06, 1, 0.08);
+        sparkle(f.position.clone().setY(0.45), 0xffe066, 10);
+        tween(520, (p) => { f.userData.petals.scale.setScalar(Math.max(0.001, p)); f.userData.bud.scale.set(1 - p * 0.6, 1.3 * (1 - p * 0.8), 1 - p * 0.6); f.userData.head.position.y = 0.36 + Math.sin(p * Math.PI) * 0.1; }, easeBack);
+        f.userData.open = 1;
+        setGoals(ev.p);
+        break;
+      }
+      case 'teleport': {
+        const b = wp(...ev.to), r0 = T.rotation.y;
+        tone(392, 0.3, 'sine', 0.06, 2.2);
+        await tween(220, (p) => { T.scale.setScalar(1 - p * 0.999); T.rotation.y = r0 + p * Math.PI * 2; T.position.y = p * 0.3; });
+        T.position.copy(b);
+        await tween(260, (p) => { T.scale.setScalar(0.001 + p * 0.999); T.rotation.y = r0 + p * Math.PI * 2; T.position.y = (1 - p) * 0.3; }, easeBack);
+        T.rotation.y = r0;
+        break;
+      }
+      case 'bump': {
+        const a = T.position.clone(), d = new THREE.Vector3(TB.DIRS[ev.dir][0], 0, TB.DIRS[ev.dir][1]);
+        tone(110, 0.15, 'square', 0.06, 0.6);
+        await tween(320, (p) => { T.position.copy(a).addScaledVector(d, Math.sin(p * Math.PI) * 0.2); u.head.rotation.z = Math.sin(p * Math.PI * 4) * 0.25 * (1 - p); });
+        u.head.rotation.z = 0;
+        status(ev.what === 'marble' ? 'Bonk. That marble won’t budge.' : ev.what === 'cup' ? 'Bonk. That cup wants a marble, not a turtle.' : 'Bonk.');
+        break;
+      }
+      case 'fall': {
+        const a = wp(...ev.from), d = new THREE.Vector3(TB.DIRS[ev.dir][0], 0, TB.DIRS[ev.dir][1]);
+        await tween(260, (p) => { T.position.copy(a).addScaledVector(d, p * 0.6); }, easeIO);
+        tone(600, 0.9, 'sine', 0.07, 0.25);
+        const s = T.position.clone();
+        await tween(1150, (p) => { T.position.copy(s).addScaledVector(d, p * 0.9); T.position.y = -p * p * 9; T.rotation.x = p * 5; });
+        splash(T.position);
+        break;
+      }
+      case 'win': break;
+    }
+  }
+  if (my !== runId) return;
+  $('run').disabled = false;
+  if (cur >= 0 && sim.result !== 'fall' && sim.result !== 'lost') { lis[cur].classList.remove('now'); lis[cur].classList.add('done'); }
+  if (sim.result === 'win') return celebrate(sim, my);
+  if (sim.result === 'fall') status('Splash! The turtle walked off the edge.', true);
+  else if (sim.result === 'lost') status('Splash! A marble rolled off the edge.', true);
+  else {
+    const p = sim.progress, miss = [];
+    if (p.flowers[0] < p.flowers[1]) miss.push(`${p.flowers[1] - p.flowers[0]} flower${p.flowers[1] - p.flowers[0] > 1 ? 's' : ''} still closed`);
+    if (p.targets[0] < p.targets[1]) miss.push(`${p.targets[1] - p.targets[0]} square${p.targets[1] - p.targets[0] > 1 ? 's' : ''} unpainted`);
+    if (p.cups[0] < p.cups[1]) miss.push(`${p.cups[1] - p.cups[0]} marble${p.cups[1] - p.cups[0] > 1 ? 's' : ''} to sink`);
+    if (p.strays) miss.push('ink outside the lines');
+    status(miss.join(' · ') + '.', true);
+  }
+}
+
+async function celebrate(sim, my) {
+  status('The garden is in bloom!');
+  const lv = LEVELS[levelIdx], st = TB.stars(sim.count, lv.par);
+  if (st > (save.stars[levelIdx] || 0)) { save.stars[levelIdx] = st; persist(); renderLevels(); }
+  [0, 4, 7, 12, 16].forEach((n, i) => tone(523 * Math.pow(2, n / 12), 0.35, 'triangle', 0.06, 1, i * 0.09));
+  confetti();
+  const T = turtle, u = T.userData, r0 = T.rotation.y;
+  for (let k = 0; k < 2; k++) {
+    await tween(560, (p) => {
+      T.position.y = Math.sin(p * Math.PI) * 0.45; T.rotation.y = r0 + p * Math.PI * 2;
+      u.legs.forEach((l, j) => { l.rotation.z = Math.sin(p * Math.PI * 4 + j) * 0.8; });
+      u.head.rotation.x = -Math.sin(p * Math.PI) * 0.4;
+    });
+    if (my !== runId) return;
+  }
+  T.rotation.y = r0;
+  $('dstars').innerHTML = '★'.repeat(st) + `<span>${'★'.repeat(3 - st)}</span>`;
+  $('dmsg').textContent = `${lv.name}: ${sim.count} word${sim.count === 1 ? '' : 's'}.`;
+  $('dsub').textContent = st === 3 ? (sim.count < lv.par ? `Under par (${lv.par}). Show-off.` : `Par is ${lv.par}.`) : `Par is ${lv.par}. There's a shorter way.`;
+  $('next').textContent = levelIdx < LEVELS.length - 1 ? 'Next garden' : 'Back to 1';
+  $('dialog').classList.add('show');
+  $('next').focus();
+}
+
+$('run').onclick = runProgram;
+$('reset').onclick = resetBoard;
+$('again').onclick = () => { $('dialog').classList.remove('show'); resetBoard(); codeEl.focus(); };
+$('next').onclick = () => loadLevel((levelIdx + 1) % LEVELS.length);
+$('helpbtn').onclick = () => $('help').classList.toggle('show');
+$('helpclose').onclick = () => $('help').classList.remove('show');
+$('speed').oninput = (e) => { speed = +e.target.value; };
+const muteBtn = $('mute');
+const syncMute = () => { muteBtn.classList.toggle('on', muted); muteBtn.title = muted ? 'Sound off' : 'Sound on'; };
+muteBtn.onclick = () => { muted = !muted; try { localStorage.setItem(STORE + ':muted', muted ? '1' : '0'); } catch {} syncMute(); };
+syncMute();
+speed = +$('speed').value;
+
+// ---------- frame loop ----------
+function resize() {
+  const W = innerWidth, H = innerHeight;
+  renderer.setSize(W, H, false); effect.setSize(W, H);
+  camera.aspect = W / H;
+  const narrow = W <= 860;
+  // centre the island in the space the windows leave free
+  if (narrow) camera.setViewOffset(W, H, 0, H * 0.2, W, H);
+  else camera.setViewOffset(W, H, 12, 0, W, H);
+  camera.updateProjectionMatrix();
+  if (L) frame();
+}
+addEventListener('resize', resize);
+
+const clock = new THREE.Clock();
+function loop() {
+  requestAnimationFrame(loop);
+  const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime, now = performance.now();
+  for (const tw of tweens.slice()) {
+    const p = Math.min(1, (now - tw.t0) / tw.ms);
+    tw.fn(tw.ease(p));
+    if (p >= 1) { tweens.splice(tweens.indexOf(tw), 1); tw.res(); }
+  }
+  for (const m of parts.slice()) {
+    const d = m.userData; d.age += dt;
+    if (d.flutter !== undefined) { m.position.x += Math.sin(t * 3 + d.flutter) * dt * 0.5; }
+    else d.v.y -= 6 * dt;
+    m.position.addScaledVector(d.v, dt);
+    m.rotation.x += d.spin * dt; m.rotation.y += d.spin * 0.7 * dt;
+    if (d.flutter === undefined) m.scale.setScalar(Math.max(0.01, 1 - d.age / d.life));
+    if (d.age > d.life) { fx.remove(m); parts.splice(parts.indexOf(m), 1); }
+  }
+  if (L) {
+    for (const f of Object.values(objs.flowers)) { f.userData.head.rotation.z = Math.sin(t * 1.6 + f.userData.ph) * 0.08; f.rotation.y = Math.sin(t * 0.7 + f.userData.ph) * 0.2; }
+    for (const g of objs.teles) { g.userData.rings.forEach((r, k) => { r.position.y = 0.28 + k * 0.2 + Math.sin(t * 2.4 + g.userData.ph + k) * 0.05; r.rotation.z = t * (k ? -2 : 1.5); }); }
+    if (turtle && !tweens.length) { turtle.userData.body.position.y = Math.sin(t * 2.2) * 0.012; turtle.userData.head.position.y = 0.17 + Math.sin(t * 2.2 + 0.6) * 0.015; }
+  }
+  for (const c of clouds) { c.userData.a += c.userData.sp * dt; c.position.x = Math.cos(c.userData.a) * c.userData.r; c.position.z = Math.sin(c.userData.a) * c.userData.r; c.lookAt(0, c.position.y, 0); }
+  for (const w of waves.children) { w.scale.x = 0.6 + Math.sin(t * 0.8 + w.userData.ph) * 0.4; }
+  controls.update();
+  effect.render(scene, camera);
+}
+
+const fromHash = parseInt(location.hash.slice(1), 10);
+const firstOpen = Object.keys(save.stars).length ? Math.min(LEVELS.length - 1, Math.max(...Object.keys(save.stars).map(Number)) + 1) : 0;
+resize();
+loadLevel(fromHash >= 1 && fromHash <= LEVELS.length ? fromHash - 1 : firstOpen);
+resize();
+loop();
+window.__tb = { loadLevel, runProgram, setCode: (s) => { codeEl.value = s; onCode(); } };
+</script>
+</body>
+</html>
